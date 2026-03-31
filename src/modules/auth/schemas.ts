@@ -30,22 +30,34 @@ export const authorizedUserSchema = z.object({
 export type AuthorizedUser = z.infer<typeof authorizedUserSchema>;
 
 /**
- * User registration schema (for future use)
+ * User signup schema for registration
+ * Enforces strong password requirements and confirmation matching
  */
-export const registerSchema = z
+export const signupSchema = z
   .object({
-    email: z.string().email("Invalid email format").toLowerCase(),
+    email: z
+      .string()
+      .min(1, "Email is required")
+      .email("Invalid email format")
+      .toLowerCase(),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
       .regex(/[A-Z]/, "Password must contain an uppercase letter")
       .regex(/[a-z]/, "Password must contain a lowercase letter")
       .regex(/[0-9]/, "Password must contain a number"),
-    confirmPassword: z.string(),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
   });
+
+export type SignupInput = z.infer<typeof signupSchema>;
+
+/**
+ * @deprecated Use signupSchema instead
+ */
+export const registerSchema = signupSchema;
 
 export type RegisterInput = z.infer<typeof registerSchema>;
