@@ -8,6 +8,10 @@ import {
 } from "@/shared/server/orders";
 import { NotFoundError } from "@/shared/server/errors";
 import { statusUpdateSchema } from "@/modules/orders/schemas";
+import { validateBody, validateParams } from "@/shared/server/validate";
+import { z } from "zod";
+
+const idParamsSchema = z.object({ id: z.string().min(1) });
 
 /**
  * PATCH /api/orders/[id]/status
@@ -23,15 +27,14 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const { id } = await params;
+  const { id } = validateParams(await params, idParamsSchema);
   return withErrorHandling(async () => {
     await connectDB();
 
     const user = await requireSessionUser();
     assertPermission(user.role, "orders:edit");
 
-    const body = await request.json();
-    const { status: newStatus } = statusUpdateSchema.parse(body);
+    const { status: newStatus } = await validateBody(request, statusUpdateSchema);
 
     const order = await Order.findById(id);
     if (!order) {

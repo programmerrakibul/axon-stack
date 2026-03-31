@@ -4,6 +4,7 @@ import { requireSessionUser } from "@/shared/server/require";
 import { assertPermission } from "@/shared/server/rbac";
 import { orderCreateSchema, orderQuerySchema } from "@/modules/orders/schemas";
 import { calculateOrderTotals } from "@/shared/server/orders";
+import { validateBody, validateQuery } from "@/shared/server/validate";
 
 /**
  * GET /api/orders
@@ -19,13 +20,7 @@ export const GET = withErrorHandling(async (request: Request) => {
   await connectDB();
 
   // Parse and validate query parameters
-  const { searchParams } = new URL(request.url);
-  const queryParams = orderQuerySchema.parse({
-    skip: searchParams.get("skip"),
-    limit: searchParams.get("limit"),
-    status: searchParams.get("status"),
-    search: searchParams.get("search"),
-  });
+  const queryParams = validateQuery(request, orderQuerySchema);
 
   // Build filter
   const filter: Record<string, unknown> = {};
@@ -86,8 +81,7 @@ export const POST = withErrorHandling(async (request: Request) => {
   assertPermission(user.role, "orders:create");
 
   // Parse and validate request body
-  const body = await request.json();
-  const { customerName, items } = orderCreateSchema.parse(body);
+  const { customerName, items } = await validateBody(request, orderCreateSchema);
 
   // Calculate totals and check availability (but don't deduct yet)
   const { items: calculatedItems, totalPrice } =
