@@ -1,26 +1,47 @@
-import { PageHeader } from "@/components/ui/page-header";
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Plus } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart } from "lucide-react";
+import { OrdersTable } from "@/modules/orders/components/OrdersTable";
+import { CreateOrderDialog } from "@/modules/orders/components/CreateOrderDialog";
+import { useOrders } from "@/modules/orders/hooks";
+import { ApiClientError } from "@/shared/client/api";
 
 export default function OrdersPage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { data, isPending, error } = useOrders({ skip: 0, limit: 50 });
+
+  useEffect(() => {
+    if (!error) return;
+    if (error instanceof ApiClientError) {
+      toast.error(error.message);
+    } else {
+      toast.error("Failed to load orders");
+    }
+  }, [error]);
+
   return (
     <Container>
       <PageHeader
         title="Orders"
         description="View and manage customer orders"
-        action={<Button>New Order</Button>}
+        action={
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Order
+          </Button>
+        }
       />
 
       <div className="mt-8">
-        <EmptyState
-          icon={<ShoppingCart className="h-12 w-12" />}
-          title="No orders found"
-          description="Orders will appear here once customers start ordering."
-          action={<Button variant="outline">View All</Button>}
-        />
+        <OrdersTable orders={data?.orders ?? []} isLoading={isPending} />
       </div>
+
+      <CreateOrderDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </Container>
   );
 }
