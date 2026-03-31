@@ -3,6 +3,8 @@
  * Defines roles, permissions, and permission checks
  */
 
+import { ForbiddenError } from "./errors";
+
 export type UserRole = "ADMIN" | "MANAGER" | "CUSTOMER";
 
 /**
@@ -88,14 +90,14 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 
 /**
  * Assert that a user role has a specific permission
- * Throws UnauthorizedError if permission is not granted
+ * Throws ForbiddenError if permission is not granted
  * @param role User role
  * @param permission Permission to check
- * @throws {UnauthorizedError} If permission is not granted
+ * @throws {ForbiddenError} If permission is not granted
  */
 export function assertPermission(role: UserRole, permission: Permission): void {
   if (!hasPermission(role, permission)) {
-    throw new UnauthorizedError(
+    throw new ForbiddenError(
       `Permission denied: ${role} does not have ${permission}`,
     );
   }
@@ -135,16 +137,6 @@ export function hasAllPermissions(
   permissions: Permission[],
 ): boolean {
   return permissions.every((p) => hasPermission(role, p));
-}
-
-/**
- * Custom error class for unauthorized access
- */
-export class UnauthorizedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "UnauthorizedError";
-  }
 }
 
 /**

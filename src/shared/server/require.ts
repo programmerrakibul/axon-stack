@@ -1,4 +1,5 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { UnauthorizedError } from "./errors";
 
 /**
  * Authenticated user object returned by requireSessionUser()
@@ -11,11 +12,14 @@ export interface AuthenticatedUser {
 
 /**
  * Custom error for authorization failures
+ * Extends UnauthorizedError for API compatibility
+ * @deprecated Use UnauthorizedError or ForbiddenError from errors.ts instead
  */
-export class AuthorizationError extends Error {
+export class AuthorizationError extends UnauthorizedError {
   constructor(message: string = "Unauthorized") {
     super(message);
     this.name = "AuthorizationError";
+    Object.setPrototypeOf(this, AuthorizationError.prototype);
   }
 }
 
