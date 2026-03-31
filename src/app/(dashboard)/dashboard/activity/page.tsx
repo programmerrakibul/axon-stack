@@ -1,14 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { toast } from "sonner";
 import { Activity } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiFetch, ApiClientError } from "@/shared/client/api";
+import { apiFetch } from "@/shared/client/api";
 import type { ActivityDTO } from "@/app/api/activity/route";
 
 function ActivityFeed({ entries }: { entries: ActivityDTO[] }) {
@@ -33,19 +31,10 @@ function ActivityFeed({ entries }: { entries: ActivityDTO[] }) {
 }
 
 export default function ActivityPage() {
-  const { data, isPending, error } = useQuery<ActivityDTO[]>({
+  const { data, isPending } = useQuery<ActivityDTO[]>({
     queryKey: ["activity"],
     queryFn: () => apiFetch("/api/activity"),
   });
-
-  useEffect(() => {
-    if (!error) return;
-    if (error instanceof ApiClientError) {
-      toast(error.message);
-    } else {
-      toast("Failed to load activity");
-    }
-  }, [error]);
 
   return (
     <Container>

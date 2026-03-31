@@ -1,29 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiFetch, ApiClientError } from "@/shared/client/api";
+import { apiFetch } from "@/shared/client/api";
 import type { DashboardDTO } from "@/app/api/dashboard/route";
 
 export default function DashboardPage() {
-  const { data, isPending, error } = useQuery<DashboardDTO>({
+  const { data, isPending } = useQuery<DashboardDTO>({
     queryKey: ["dashboard"],
     queryFn: () => apiFetch("/api/dashboard"),
   });
-
-  useEffect(() => {
-    if (!error) return;
-    if (error instanceof ApiClientError) {
-      toast(error.message);
-    } else {
-      toast("Failed to load dashboard data");
-    }
-  }, [error]);
 
   const cards = data
     ? [

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,20 +8,10 @@ import { Button } from "@/components/ui/button";
 import { OrdersTable } from "@/modules/orders/components/OrdersTable";
 import { CreateOrderDialog } from "@/modules/orders/components/CreateOrderDialog";
 import { useOrders } from "@/modules/orders/hooks";
-import { ApiClientError } from "@/shared/client/api";
 
 export default function OrdersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { data, isPending, error } = useOrders({ skip: 0, limit: 50 });
-
-  useEffect(() => {
-    if (!error) return;
-    if (error instanceof ApiClientError) {
-      toast.error(error.message);
-    } else {
-      toast.error("Failed to load orders");
-    }
-  }, [error]);
+  const { data, isPending } = useOrders({ skip: 0, limit: 50 });
 
   return (
     <Container>
