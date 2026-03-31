@@ -1,73 +1,133 @@
 import { connectDB, Product, mapProductToDTO } from "@/shared/db";
 import { withErrorHandling, jsonOk } from "@/shared/server/handler";
+import { requireSessionUser } from "@/shared/server/require";
+import { assertPermission } from "@/shared/server/rbac";
+import {
+  productCreateSchema,
+  productQuerySchema,
+} from "@/modules/products/schemas";
 import { BadRequestError } from "@/shared/server/errors";
+import { syncRestockForProduct } from "@/shared/server/stock";
 
 /**
  * GET /api/products
- * Fetch all active products with optional category filter
- * Query params: categoryId (optional)
+ * List all products with pagination, search, filtering, and restock status
+ *
+ * Query params:
+ * - skip (default 0)
+ * - limit (default 10)
+ * - search (optional text search on name)
+ * - categoryId (optional filter by category)
+ * - isActive (optional filter by active status)
+ * - needsRestockOnly (optional filter to only show products below threshold)
  */
 export const GET = withErrorHandling(async (request: Request) => {
-  // Initialize database connection (reuses cached connection)
   await connectDB();
 
-  // Get query parameters
+  // Parse and validate query parameters
   const { searchParams } = new URL(request.url);
-  const categoryId = searchParams.get("categoryId");
+  const queryParams = productQuerySchema.parse({
+    skip: searchParams.get("skip"),
+    limit: searchParams.get("limit"),
+    search: searchParams.get("search"),
+    categoryId: searchParams.get("categoryId"),
+    isActive: searchParams.get("isActive"),
+    needsRestockOnly: searchParams.get("needsRestockOnly"),
+  });
 
-  // Build filter query
-  const filter: Record<string, unknown> = { isActive: true };
-  if (categoryId) {
-    filter.categoryId = categoryId;
+  // Build filter
+  const filter: Record<string, unknown> = {};
+
+  if (queryParams.search) {
+    filter.name = { $regex: queryParams.search, $options: "i" };
   }
 
-  // Fetch products
-  const products = await Product.find(filter)
-    .limit(100) // Pagination: limit results
-    .sort({ createdAt: -1 }); // Newest first
+  if (queryParams.categoryId) {
+    filter.categoryId = queryParams.categoryId;
+  }
 
-  // Map to safe DTOs (excludes sensitive fields, adds computed properties)
+  if (queryParams.isActive !== undefined) {
+    filter.isActive = queryParams.isActive;
+  }
+
+  if (queryParams.needsRestockOnly) {
+    filter.$expr = {
+      $lte: ["$stockQty", "$minThreshold"],
+    };
+  }
+
+  // Fetch products with pagination
+  const products = await Product.find(filter)
+    .skip(queryParams.skip)
+    .limit(queryParams.limit)
+    .sort({ createdAt: -1 });
+
+  // Get total count for pagination
+  const total = await Product.countDocuments(filter);
+
+  // Map to DTOs
   const productDTOs = products.map(mapProductToDTO);
 
   return jsonOk({
     products: productDTOs,
-    count: productDTOs.length,
+    pagination: {
+      total,
+      skip: queryParams.skip,
+      limit: queryParams.limit,
+      hasMore: queryParams.skip + queryParams.limit < total,
+    },
   });
 });
 
 /**
  * POST /api/products
- * Create a new product
- * Body: { name, categoryId, price, stockQty, minThreshold, isActive }
+ * Create a new product (requires catalog:create permission)
+ *
+ * Body:
+ * {
+ *   name: string,
+ *   categoryId: string (MongoDB ObjectId),
+ *   price: number,
+ *   stockQty: number,
+ *   minThreshold: number
+ * }
  */
 export const POST = withErrorHandling(async (request: Request) => {
   await connectDB();
 
-  const body = await request.json();
+  // Require authenticated user
+  const user = await requireSessionUser();
 
-  // Validate required fields
-  if (
-    !body.name ||
-    !body.categoryId ||
-    body.price === undefined ||
-    body.stockQty === undefined
-  ) {
-    throw new BadRequestError("Missing required fields", {
-      required: ["name", "categoryId", "price", "stockQty"],
-      provided: Object.keys(body),
+  // Check permission
+  assertPermission(user.role, "catalog:create");
+
+  // Parse and validate request body
+  const body = await request.json();
+  const { name, categoryId, price, stockQty, minThreshold } =
+    productCreateSchema.parse(body);
+
+  // Check if product with this name already exists
+  const existingProduct = await Product.findOne({ name });
+  if (existingProduct) {
+    throw new BadRequestError("Product with this name already exists", {
+      field: "name",
+      value: name,
     });
   }
 
-  // Create product with defaults
+  // Create product
   const product = await Product.create({
-    name: body.name,
-    categoryId: body.categoryId,
-    price: body.price,
-    stockQty: body.stockQty,
-    minThreshold: body.minThreshold ?? 10,
-    isActive: body.isActive ?? true,
+    name,
+    categoryId,
+    price,
+    stockQty,
+    minThreshold,
+    isActive: true,
   });
 
-  // Return created product as DTO
+  // Sync restock status if product needs restocking
+  await syncRestockForProduct(product);
+
+  // Return created product
   return jsonOk(mapProductToDTO(product), { status: 201 });
 });
