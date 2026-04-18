@@ -19,6 +19,7 @@ export const POST = withErrorHandling(async (request: Request) => {
 
   // Check if email already exists
   const existingUser = await User.findOne({ email });
+  
   if (existingUser) {
     throw new ConflictError("Email already in use");
   }

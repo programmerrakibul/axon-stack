@@ -32,6 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             console.warn(
               `Login attempt with non-existent email: ${parsed.email}`,
             );
+
             return null;
           }
 
