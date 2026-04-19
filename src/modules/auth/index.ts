@@ -19,6 +19,3 @@ export {
   verifyPassword,
   generateRandomPassword,
 } from "./password";
-
-// NextAuth configuration and helpers
-export { auth, signIn, signOut } from "@/app/api/auth/[...nextauth]/route";
