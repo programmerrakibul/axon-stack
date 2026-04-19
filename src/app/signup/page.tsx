@@ -30,8 +30,6 @@ export default function SignupPage() {
     try {
       setIsLoading(true);
 
-      console.log("Signup data:", data);
-
       // Call signup API endpoint
       await apiFetch("/api/auth/signup", {
         method: "POST",

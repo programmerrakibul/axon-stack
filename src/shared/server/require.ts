@@ -1,5 +1,6 @@
-import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { getServerSession } from "next-auth";
 import { UnauthorizedError } from "./errors";
+import { authOptions } from "@/lib/authOptions";
 
 /**
  * Authenticated user object returned by requireSessionUser()
@@ -42,7 +43,7 @@ export class AuthorizationError extends UnauthorizedError {
  * @throws {AuthorizationError} If user is not authenticated
  */
 export async function requireSessionUser(): Promise<AuthenticatedUser> {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     throw new AuthorizationError("Authentication required");
